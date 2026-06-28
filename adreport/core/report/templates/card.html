@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Карточка отчёта</title>
+<style>
+@font-face { font-family: 'IBM Plex Sans'; src: url('fonts/IBMPlexSans-Regular.ttf'); font-weight: 400; }
+@font-face { font-family: 'IBM Plex Sans'; src: url('fonts/IBMPlexSans-Medium.ttf'); font-weight: 500; }
+@font-face { font-family: 'IBM Plex Sans'; src: url('fonts/IBMPlexSans-Bold.ttf'); font-weight: 700; }
+
+:root {
+  --text: #1c1c1a;
+  --text-secondary: #5f5e58;
+  --text-muted: #8a8880;
+  --border: #e3e1d9;
+  --accent: #2a78d6;
+  --bg-accent: #e7f0fb;
+  --bg-success: #e4f3e8;
+  --text-success: #1d7a3d;
+  --bg-warning: #faf0d3;
+  --text-warning: #8f6400;
+}
+
+@page { size: 420px 232px; margin: 0; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  color: var(--text);
+  background: #ffffff;
+  padding: 20px;
+}
+
+table { border-collapse: collapse; width: 100%; }
+td { vertical-align: middle; }
+
+.avatar {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  background: var(--bg-accent);
+  color: var(--accent);
+  font-weight: 500; font-size: 11px;
+  text-align: center; line-height: 30px;
+}
+
+.h-name { font-size: 13px; font-weight: 500; }
+.h-sub { font-size: 12px; color: var(--text-muted); }
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.badge-success { background: var(--bg-success); color: var(--text-success); }
+.badge-warning { background: var(--bg-warning); color: var(--text-warning); }
+
+.views-label { margin-top: 14px; font-size: 12px; color: var(--text-muted); }
+.views-value { font-size: 32px; font-weight: 500; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.views-sub { font-size: 12px; color: var(--text-secondary); }
+
+.grid { margin-top: 13px; padding-top: 11px; border-top: 0.5px solid var(--border); table-layout: fixed; }
+.g-label { font-size: 11px; color: var(--text-muted); }
+.g-value { font-size: 15px; font-weight: 500; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+.footer { margin-top: 11px; padding-top: 9px; border-top: 0.5px solid var(--border); font-size: 11px; color: var(--text-muted); }
+.footer .right { text-align: right; }
+</style>
+</head>
+<body>
+
+<table>
+  <tr>
+    <td style="width: 30px;"><div class="avatar">{{ d.channel.title | initials }}</div></td>
+    <td style="padding-left: 10px;">
+      <p class="h-name">{{ d.channel.title }}</p>
+      <p class="h-sub">@{{ d.channel.username }} · пост {{ d.post.msg_id }}</p>
+    </td>
+    <td style="text-align: right;">
+      {% if d.data_scope == 'full' %}
+        <span class="badge badge-success">полная статистика</span>
+      {% else %}
+        <span class="badge badge-warning">публичные данные</span>
+      {% endif %}
+    </td>
+  </tr>
+</table>
+
+<p class="views-label">Просмотры</p>
+<p class="views-value">{{ d.metrics.views | fmt_int }}</p>
+<p class="views-sub">{{ d.metrics.reach_pct | fmt_pct0 }} подписчиков
+  {%- if d.metrics.age_hours is not none %} · возраст поста {{ d.metrics.age_hours | fmt_age }}{% endif %}</p>
+
+<table class="grid">
+  <tr>
+    <td>
+      <p class="g-label">Пересылки</p>
+      <p class="g-value">{{ d.metrics.forwards | fmt_int }}</p>
+    </td>
+    <td>
+      <p class="g-label">Реакции</p>
+      <p class="g-value">{{ d.metrics.reactions_total | fmt_int }}</p>
+    </td>
+    <td>
+      <p class="g-label">ERR</p>
+      <p class="g-value">{{ d.metrics.err_pct | fmt_pct1 }}</p>
+    </td>
+  </tr>
+</table>
+
+<table class="footer">
+  <tr>
+    <td>t.me/{{ d.channel.username }}/{{ d.post.msg_id }}</td>
+    <td class="right">adreport{% if d.demo %} demo{% endif %} · {{ d.data_as_of | fmt_dt }}</td>
+  </tr>
+</table>
+
+</body>
+</html>

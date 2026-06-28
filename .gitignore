@@ -1,0 +1,16 @@
+# секреты и сессии — сессия равна доступу к аккаунту
+*.session
+*.session-journal
+.env
+
+# окружение и кэши
+.venv/
+.gtk3/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# локальные артефакты (примеры коммитятся в examples/ отдельно)
+out/
+adreport.db
