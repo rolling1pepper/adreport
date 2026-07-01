@@ -47,6 +47,8 @@ def views_chart_svg(
         return ""
 
     max_hours = max(p.hours for p in points)
+    if max_hours <= 0:  # вырожденный таймлайн — нечего рисовать
+        return ""
     y_max = _nice_ceil(max(p.views for p in points))
     plot_w = width - _PAD_LEFT - _PAD_RIGHT
     plot_h = height - _PAD_TOP - _PAD_BOTTOM

@@ -44,6 +44,98 @@ def _generate(data, out_dir: Path, pdf: bool, png: bool) -> None:
 
 
 @app.command()
+def post(
+    link: str = typer.Argument(..., help="Ссылка на пост: https://t.me/канал/123"),
+    pdf: bool = typer.Option(False, "--pdf", help="Только PDF-отчёт."),
+    png: bool = typer.Option(False, "--png", help="Только PNG-карточка."),
+    out: Path = typer.Option(Path("out"), "--out", help="Каталог для файлов."),
+) -> None:
+    """Отчёт по реальному публичному посту (нужны API_ID/API_HASH в .env)."""
+    import asyncio
+    import hashlib
+
+    from ..config import load_config
+    from ..core.collector import (
+        PostUnavailableError,
+        collect_post,
+        parse_post_link,
+    )
+    from ..core.gateway import session_lock
+    from ..core.report.render import render_pdf, render_png
+    from ..core.storage import Storage
+
+    from ..core.collector import PostLinkError
+
+    try:
+        username, msg_id = parse_post_link(link)
+    except PostLinkError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=2)
+
+    config = load_config()
+    if not config.api_id or not config.api_hash:
+        typer.echo(
+            "Не заданы API_ID/API_HASH. Получите их на https://my.telegram.org, "
+            "скопируйте .env.example в .env и заполните.", err=True,
+        )
+        raise typer.Exit(code=2)
+    storage = Storage(config.db_path)
+    post_row_id = storage.get_or_create_post(username, msg_id)
+
+    async def _collect() -> dict:
+        from telethon import TelegramClient
+
+        client = TelegramClient(str(config.session_path), config.api_id, config.api_hash)
+        async with client:  # при первом запуске Telethon спросит телефон и код
+            return await collect_post(
+                client, username, msg_id,
+                media_dir=config.media_dir, tz=config.tz,
+            )
+
+    stale_note: str | None = None
+    try:
+        with session_lock(config.session_path):
+            raw = asyncio.run(_collect())
+        storage.add_snapshot(post_row_id, raw)
+    except PostUnavailableError as error:
+        # пассивная защита: пост исчез — строим по последнему срезу
+        raw = storage.latest_snapshot(username, msg_id)
+        if raw is None:
+            typer.echo(f"{error} Снапшотов этого поста в базе нет.", err=True)
+            raise typer.Exit(code=1)
+        stale_note = raw["collected_at"]
+
+    from zoneinfo import ZoneInfo
+    from datetime import datetime
+
+    data = build_report(
+        raw,
+        contact_link=config.contact_link,
+        generated_at=datetime.now(ZoneInfo(config.tz)).isoformat(timespec="seconds"),
+    )
+
+    if not pdf and not png:
+        pdf = png = True
+    sha256_pdf = None
+    stem = f"{data.channel.username}_{data.post.msg_id}"
+    if pdf:
+        path = out / f"{stem}.pdf"
+        sha256_pdf = hashlib.sha256(render_pdf(data, path)).hexdigest()
+        typer.echo(f"PDF:  {path}")
+    if png:
+        path = out / f"{stem}.png"
+        render_png(data, path)
+        typer.echo(f"PNG:  {path}")
+    storage.save_report(post_row_id, data, sha256_pdf)
+    if stale_note:
+        typer.echo(
+            f"Пост уже недоступен — отчёт собран из последнего среза от "
+            f"{stale_note} (это отражено в футере отчёта)."
+        )
+    typer.echo(f"Отчёт {data.report_id} сохранён в базе.")
+
+
+@app.command()
 def demo(
     pdf: bool = typer.Option(False, "--pdf", help="Только PDF-отчёт."),
     png: bool = typer.Option(False, "--png", help="Только PNG-карточка."),

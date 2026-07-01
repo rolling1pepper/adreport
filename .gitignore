@@ -14,3 +14,4 @@ __pycache__/
 # локальные артефакты (примеры коммитятся в examples/ отдельно)
 out/
 adreport.db
+media/
