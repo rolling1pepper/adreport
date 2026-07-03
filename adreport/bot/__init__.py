@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -37,7 +38,11 @@ class BotDeps:
 
 
 class WhitelistMiddleware(BaseMiddleware):
-    """Апдейты не из ALLOWED_IDS молча игнорируются до роутинга."""
+    """Апдейты не из ALLOWED_IDS молча игнорируются до роутинга.
+
+    Отвергнутые id пишутся в лог: так владелец видит и попытки чужих,
+    и собственный id, если забыл добавить его в ALLOWED_IDS.
+    """
 
     def __init__(self, allowed_ids: tuple[int, ...]):
         self._allowed = frozenset(allowed_ids)
@@ -45,6 +50,11 @@ class WhitelistMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
         user = data.get("event_from_user")
         if user is None or user.id not in self._allowed:
+            if user is not None:
+                logging.getLogger("adreport.bot").info(
+                    "Апдейт от пользователя id=%s не в ALLOWED_IDS — игнорирую",
+                    user.id,
+                )
             return None
         return await handler(event, data)
 
@@ -115,8 +125,10 @@ async def handle_message(message: Message, deps: BotDeps) -> None:
         post_row_id, data, hashlib.sha256(pdf_bytes).hexdigest()
     )
 
+    from ..core.report.render.filters import fmt_dt
+
     stem = f"{username}_{msg_id}"
-    caption = f"Отчёт {data.report_id} · данные на момент {data.data_as_of}"
+    caption = f"Отчёт {data.report_id} · данные на момент {fmt_dt(data.data_as_of)}"
     if stale_note:
         caption += "\nПост уже недоступен — использован последний сохранённый срез."
     await message.answer_photo(
