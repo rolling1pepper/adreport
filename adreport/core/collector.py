@@ -32,6 +32,17 @@ class PostUnavailableError(RuntimeError):
     """Пост недоступен: удалён, скрыт или канал приватный."""
 
 
+def find_post_link(text: str) -> tuple[str, int] | None:
+    """Найти первую ссылку на пост внутри произвольного текста (для бота)."""
+    match = re.search(
+        r"(?:https?://)?(?:t(?:elegram)?\.me)/([A-Za-z][A-Za-z0-9_]{3,31})/(\d+)",
+        text or "",
+    )
+    if not match:
+        return None
+    return match[1], int(match[2])
+
+
 def parse_post_link(text: str) -> tuple[str, int]:
     """«https://t.me/durov/123» → ('durov', 123)."""
     text = text.strip()

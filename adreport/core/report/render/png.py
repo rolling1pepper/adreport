@@ -15,12 +15,13 @@ from .pdf import render_pdf
 PNG_SCALE = 3.0
 
 
-def render_png(
+def render_png_bytes(
     data: ReportData,
-    out_path: Path,
     template: str = "card.html",
     scale: float = PNG_SCALE,
-) -> Path:
+) -> bytes:
+    import io
+
     import pypdfium2 as pdfium
 
     pdf_bytes = render_pdf(data, template=template)
@@ -32,6 +33,18 @@ def render_png(
     finally:
         document.close()
 
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def render_png(
+    data: ReportData,
+    out_path: Path,
+    template: str = "card.html",
+    scale: float = PNG_SCALE,
+) -> Path:
+    png_bytes = render_png_bytes(data, template=template, scale=scale)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(out_path)
+    out_path.write_bytes(png_bytes)
     return out_path

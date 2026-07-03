@@ -136,6 +136,38 @@ def post(
 
 
 @app.command()
+def bot() -> None:
+    """Запустить бота: пересланный пост или ссылка → PDF + PNG в ответ."""
+    import asyncio
+
+    from ..bot import run_bot
+    from ..config import load_config
+    from ..core.gateway import session_lock
+
+    config = load_config()
+    missing = [
+        name for name, value in (
+            ("API_ID/API_HASH", config.api_id and config.api_hash),
+            ("BOT_TOKEN", config.bot_token),
+            ("ALLOWED_IDS", config.allowed_ids),
+        ) if not value
+    ]
+    if missing:
+        typer.echo(
+            "В .env не заполнено: " + ", ".join(missing) +
+            ". См. .env.example.", err=True,
+        )
+        raise typer.Exit(code=2)
+
+    typer.echo("Бот запущен. Ctrl+C — остановить.")
+    with session_lock(config.session_path):
+        try:
+            asyncio.run(run_bot(config))
+        except KeyboardInterrupt:
+            typer.echo("Бот остановлен.")
+
+
+@app.command()
 def demo(
     pdf: bool = typer.Option(False, "--pdf", help="Только PDF-отчёт."),
     png: bool = typer.Option(False, "--png", help="Только PNG-карточка."),
