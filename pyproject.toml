@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adreport"
-version = "0.1.0"
+version = "1.0.0"
 description = "Отчёты по постам Telegram-каналов: PDF и PNG-карточка вместо скриншотов статистики"
 requires-python = ">=3.12"
 dependencies = [
