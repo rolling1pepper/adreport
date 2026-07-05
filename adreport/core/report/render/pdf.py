@@ -9,6 +9,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from ...models import ReportData
 from ..chart import views_chart_svg
 from . import filters
+from ._fontcfg import ensure_fontconfig
 from ._winlibs import ensure_gtk
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -37,6 +38,7 @@ def render_pdf(
     """Рендер в PDF; при out_path также пишет файл. base_url — каталог шаблонов,
     чтобы @font-face находил шрифты по относительным путям."""
     ensure_gtk()  # до импорта weasyprint: ему нужны DLL Pango в PATH
+    ensure_fontconfig()  # и запрет цветных emoji-шрифтов (крадут цифры)
     import weasyprint
 
     html = render_html(data, template)

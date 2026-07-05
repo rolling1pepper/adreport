@@ -53,11 +53,19 @@ def golden_data() -> ReportData:
 
 
 def _extract_text(pdf_bytes: bytes) -> str:
+    """Текст из PDF с нормализацией пробелов.
+
+    Тип пробела в текстовом слое непортабелен: ToUnicode строится обратным
+    glyph→unicode маппингом, и NBSP/пробел меняются местами в зависимости от
+    версии Pango и набора системных шрифтов (визуально PDF везде корректен).
+    Сверяем символы, а не тип пробела.
+    """
     document = pdfium.PdfDocument(pdf_bytes)
     try:
-        return "\n".join(page.get_textpage().get_text_bounded() for page in document)
+        text = "\n".join(page.get_textpage().get_text_bounded() for page in document)
     finally:
         document.close()
+    return text.replace(" ", " ").replace(" ", " ")
 
 
 def _decompressed(pdf_bytes: bytes) -> bytes:
@@ -83,9 +91,11 @@ def test_pdf_embeds_vendored_fonts(golden_data):
     raw = _decompressed(render_pdf(golden_data))
     # кириллица набрана вшитым Plex, а не системным фолбэком
     assert b"IBM-Plex-Sans" in raw
-    # реакция 👍 набрана вшитым Noto Emoji: без VS15 Pango молча уходит
-    # в системный emoji-шрифт, которого нет на чистом CI
+    # реакция 👍 набрана вшитым Noto Emoji: цветные системные emoji-шрифты
+    # отклонены конфигом fontconfig (NotoColorEmoji крадёт цифры), VS15
+    # уводит кластер из emoji-презентации (иначе Segoe на Windows)
     assert b"Noto-Emoji" in raw
+    assert b"Color-Emoji" not in raw
     assert b"Segoe-UI-Emoji" not in raw
 
 
@@ -93,7 +103,7 @@ def test_full_fixture_renders_full_report(demo_full_raw):
     data = build_report(demo_full_raw)
     text = _extract_text(render_pdf(data))
     assert "Полная статистика" in text
-    assert "34 800" in text  # неразрывный пробел из fmt_int
+    assert "34 800" in text  # NBSP из fmt_int нормализован в _extract_text
     assert "66% подписчиков" in text
     assert "Динамика просмотров" in text
 
