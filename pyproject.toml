@@ -16,6 +16,7 @@ dependencies = [
     "pypdfium2>=4.30",
     "pillow>=10",
     "telethon>=1.36",
+    "aiogram>=3.7",
     "sqlalchemy>=2.0",
     "python-dotenv>=1.0",
     "tzdata>=2024.1",
